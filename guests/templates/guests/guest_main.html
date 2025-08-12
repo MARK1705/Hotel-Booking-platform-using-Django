@@ -1,0 +1,118 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container mt-4">
+    <h2>Guest List</h2>
+    <button class="btn btn-primary mb-3" onclick="openGuestModal()">Add Guests</button>
+
+    <table class="table" id="guestTable">
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Contact</th>
+                <th>Email</th>
+                <th>Action</th>
+            </tr>
+        </thead>
+        <tbody id="guestListBody"></tbody>
+    </table>
+</div>
+
+<!-- Modal starts -->
+<div class="modal fade" id="guestModal" tabindex="-1" role="dialog">
+  <div class="modal-dialog" role="document">
+    <form id="guestForm">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Add Guests</h5>
+          <button type="button" class="close" onclick="closeModal()">&times;</button>
+        </div>
+        <div class="modal-body" id="guestFields"></div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-link" onclick="addGuestField()">Add Another Guest</button>
+          <button type="submit" class="btn btn-success">Submit</button>
+          <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+        </div>
+      </div>
+    </form>
+  </div>
+</div>
+<!-- Modal ends -->
+
+<script>
+function loadGuests() {
+    fetch("/guests/list/").then(r=>r.json()).then(data=>{
+        let tbody = document.getElementById('guestListBody');
+        tbody.innerHTML = "";
+        for (let guest of data.guests) {
+            let row = `<tr>
+                <td>${guest.name}</td>
+                <td>${guest.contact}</td>
+                <td>${guest.email}</td>
+                <td>
+                  <button class="btn btn-danger btn-sm" onclick="deleteGuest(${guest.id})">Delete</button>
+                </td>
+              </tr>`;
+            tbody.innerHTML += row;
+        }
+    });
+}
+
+function openGuestModal() {
+    document.getElementById("guestFields").innerHTML = "";
+    addGuestField();
+    $('#guestModal').modal({backdrop:'static', keyboard:false});
+}
+
+function closeModal() {
+    $('#guestModal').modal('hide');
+}
+
+function addGuestField() {
+    let div = document.createElement('div');
+    div.className = "guest-field mb-2 border-bottom pb-2";
+    div.innerHTML = `
+      <input type="text" placeholder="Guest Name*" class="form-control mb-1 guest-name" required>
+      <input type="text" placeholder="Contact" class="form-control mb-1 guest-contact">
+      <input type="email" placeholder="Email" class="form-control mb-1 guest-email">
+      <button type="button" class="btn btn-link text-danger p-0" onclick="this.parentNode.remove()">Remove</button>
+    `;
+    document.getElementById("guestFields").appendChild(div);
+}
+
+document.getElementById("guestForm").onsubmit = function(e){
+    e.preventDefault();
+    let fields = document.getElementsByClassName('guest-field');
+    let guests = [], errors = [];
+    for (let field of fields) {
+        let name = field.getElementsByClassName('guest-name')[0].value.trim();
+        let contact = field.getElementsByClassName('guest-contact')[0].value.trim();
+        let email = field.getElementsByClassName('guest-email')[0].value.trim();
+        if (!name) errors.push("Guest name required.");
+        guests.push({name:name, contact:contact, email:email});
+    }
+    if(errors.length>0) {
+        alert(errors.join("\n"));
+        return;
+    }
+    fetch("/guests/add/", {
+        method:"POST",
+        headers: {"Content-Type": "application/json", "X-CSRFToken": "{{ csrf_token }}"},
+        body: JSON.stringify({guests:guests})
+    }).then(r=>r.json()).then(data=>{
+        if(data.error) {
+            alert(data.error);
+        } else {
+            closeModal();
+            loadGuests();
+        }
+    });
+}
+
+function deleteGuest(id) {
+    fetch(`/guests/delete/${id}/`, { method: 'POST', headers: {"X-CSRFToken": "{{ csrf_token }}"} })
+      .then(_=>loadGuests());
+}
+
+window.onload = loadGuests;
+</script>
+{% endblock %}
