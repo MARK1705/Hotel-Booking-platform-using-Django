@@ -117,7 +117,3 @@ python manage.py runserver
 
 **Author:** Mergu Bharath kumar 
 💡 *Built as a Django learning and demonstration project.*
-
-Dataset added in the repo
-### 📂 Dataset Integration
-- Import large hotel datasets **from CSV** into the database using a custom Django management command:
